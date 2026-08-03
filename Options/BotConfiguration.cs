@@ -8,5 +8,8 @@
 
         // Telegram Bot API Token
         public string BotToken { get; set; } = string.Empty;
+
+        // Specifies how the bot receives updates from Telegram
+        public BotMode Mode { get; set; } = BotMode.Polling;
     }
 }
