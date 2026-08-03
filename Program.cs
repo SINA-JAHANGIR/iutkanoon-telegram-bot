@@ -1,4 +1,6 @@
+using IutKanoon.TelegramBot.Abstractions;
 using IutKanoon.TelegramBot.Options;
+using IutKanoon.TelegramBot.Services;
 using Microsoft.Extensions.Options;
 using Telegram.Bot;
 
@@ -21,6 +23,11 @@ builder.Services.AddSingleton<ITelegramBotClient>(sp =>
     return new TelegramBotClient(botConfig.BotToken);
 });
 
+// Register UpdateRouter
+builder.Services.AddSingleton<IUpdateRouter,UpdateRouter>();
+
+// Register PollingBackgroundService as a Hosted Service
+builder.Services.AddHostedService<PollingBackgroundService>();
 
 var app = builder.Build();
 

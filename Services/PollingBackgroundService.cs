@@ -28,6 +28,16 @@ public class PollingBackgroundService : BackgroundService
     {
         _logger.LogInformation("Starting Telegram Bot Polling service...");
 
+        try
+        {
+            await _botClient.DeleteWebhook(cancellationToken: stoppingToken);
+            _logger.LogInformation("Existing webhook removed successfully.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to delete existing webhook.");
+        }
+
         var receiverOptions = new ReceiverOptions
         {
             AllowedUpdates = Array.Empty<UpdateType>(), // Receive all update types
