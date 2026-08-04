@@ -1,4 +1,5 @@
 using IutKanoon.TelegramBot.Abstractions;
+using IutKanoon.TelegramBot.Handlers;
 using IutKanoon.TelegramBot.Options;
 using IutKanoon.TelegramBot.Services;
 using Microsoft.Extensions.Options;
@@ -23,8 +24,12 @@ builder.Services.AddSingleton<ITelegramBotClient>(sp =>
     return new TelegramBotClient(botConfig.BotToken);
 });
 
-// Register UpdateRouter
+// Register Core Services
 builder.Services.AddSingleton<IUpdateRouter,UpdateRouter>();
+builder.Services.AddSingleton<ICommandRegistry,CommandRegistry>();
+
+// Register Command Handlers
+builder.Services.AddSingleton<ITelegramCommandHandler, StartCommandHandler>();
 
 // Register PollingBackgroundService as a Hosted Service
 builder.Services.AddHostedService<PollingBackgroundService>();
