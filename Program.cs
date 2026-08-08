@@ -2,6 +2,8 @@ using IutKanoon.TelegramBot.Abstractions;
 using IutKanoon.TelegramBot.Handlers;
 using IutKanoon.TelegramBot.Options;
 using IutKanoon.TelegramBot.Services;
+using IutKanoon.TelegramBot.Infrastructure.Data;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Telegram.Bot;
 
@@ -10,6 +12,10 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Bind configuration section to BotConfiguration model
 builder.Services.Configure<BotConfiguration>(builder.Configuration.GetSection(BotConfiguration.Configuration));
+
+// Register BotDbContext with SQLite
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+builder.Services.AddDbContext<BotDbContext>(options => options.UseSqlite(connectionString));
 
 // Register ITelegramBotClient as a Singleton in DI container
 builder.Services.AddSingleton<ITelegramBotClient>(sp =>
@@ -28,8 +34,8 @@ builder.Services.AddSingleton<ITelegramBotClient>(sp =>
 builder.Services.AddSingleton<IUpdateRouter,UpdateRouter>();
 builder.Services.AddSingleton<ICommandRegistry,CommandRegistry>();
 
-// Register Command Handlers
-builder.Services.AddSingleton<ITelegramCommandHandler, StartCommandHandler>();
+// Register Command Handlers (As Transient to allow BotDbContext injection)
+builder.Services.AddTransient<ITelegramCommandHandler, StartCommandHandler>();
 
 // Register PollingBackgroundService as a Hosted Service
 builder.Services.AddHostedService<PollingBackgroundService>();
