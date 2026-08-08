@@ -482,3 +482,8 @@ $RECYCLE.BIN/
 *.swp
 
 appsettings.Development.json
+
+# SQLite Database files
+*.db
+*.db-shm
+*.db-wal
