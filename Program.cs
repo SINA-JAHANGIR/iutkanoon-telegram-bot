@@ -1,23 +1,27 @@
 using IutKanoon.TelegramBot.Abstractions;
 using IutKanoon.TelegramBot.Handlers;
+using IutKanoon.TelegramBot.Infrastructure.Data;
+using IutKanoon.TelegramBot.Infrastructure.Data.Repositories;
 using IutKanoon.TelegramBot.Options;
 using IutKanoon.TelegramBot.Services;
-using IutKanoon.TelegramBot.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Telegram.Bot;
 
-
 var builder = WebApplication.CreateBuilder(args);
 
-// Bind configuration section to BotConfiguration model
+// Binds configuration section to BotConfiguration model.
 builder.Services.Configure<BotConfiguration>(builder.Configuration.GetSection(BotConfiguration.Configuration));
 
-// Register BotDbContext with SQLite
+// Registers BotDbContext with SQLite.
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<BotDbContext>(options => options.UseSqlite(connectionString));
 
-// Register ITelegramBotClient as a Singleton in DI container
+// Registers data repositories in the DI container.
+builder.Services.AddScoped<IUserSessionRepository, UserSessionRepository>();
+builder.Services.AddScoped<IUserStateRepository, UserStateRepository>();
+
+// Registers ITelegramBotClient as a singleton instance.
 builder.Services.AddSingleton<ITelegramBotClient>(sp =>
 {
     var botConfig = sp.GetRequiredService<IOptions<BotConfiguration>>().Value;
@@ -30,17 +34,24 @@ builder.Services.AddSingleton<ITelegramBotClient>(sp =>
     return new TelegramBotClient(botConfig.BotToken);
 });
 
-// Register Core Services
-builder.Services.AddSingleton<IUpdateRouter,UpdateRouter>();
-builder.Services.AddSingleton<ICommandRegistry,CommandRegistry>();
+// Registers core application services.
+builder.Services.AddSingleton<IUpdateRouter, UpdateRouter>();
+builder.Services.AddSingleton<ICommandRegistry, CommandRegistry>();
 
-// Register Command Handlers (As Transient to allow BotDbContext injection)
+// Registers command handlers with transient lifetime.
 builder.Services.AddTransient<ITelegramCommandHandler, StartCommandHandler>();
 
-// Register PollingBackgroundService as a Hosted Service
+// Registers PollingBackgroundService as a hosted service.
 builder.Services.AddHostedService<PollingBackgroundService>();
 
 var app = builder.Build();
+
+// Applies pending database migrations automatically on application startup.
+using (var scope = app.Services.CreateScope())
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<BotDbContext>();
+    await dbContext.Database.MigrateAsync();
+}
 
 app.MapGet("/", () => "IutKanoon Telegram Bot is running!");
 
