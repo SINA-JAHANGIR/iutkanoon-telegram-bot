@@ -37,6 +37,7 @@ builder.Services.AddSingleton<ITelegramBotClient>(sp =>
 // Registers core application services.
 builder.Services.AddSingleton<IUpdateRouter, UpdateRouter>();
 builder.Services.AddSingleton<ICommandRegistry, CommandRegistry>();
+builder.Services.AddSingleton<IStateHandlerRegistry, StateHandlerRegistry>();
 
 // Registers command handlers with transient lifetime.
 builder.Services.AddTransient<ITelegramCommandHandler, StartCommandHandler>();

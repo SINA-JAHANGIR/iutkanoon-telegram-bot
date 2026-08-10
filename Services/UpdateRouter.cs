@@ -11,12 +11,15 @@ public class UpdateRouter : IUpdateRouter
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly ICommandRegistry _commandRegistry;
+    private readonly IStateHandlerRegistry _stateHandlerRegistry;
     private readonly ILogger<UpdateRouter> _logger;
 
-    public UpdateRouter(IServiceProvider serviceProvider, ICommandRegistry commandRegistry, ILogger<UpdateRouter> logger)
+    public UpdateRouter(IServiceProvider serviceProvider, ICommandRegistry commandRegistry,
+        IStateHandlerRegistry stateHandlerRegistry, ILogger<UpdateRouter> logger)
     {
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
         _commandRegistry = commandRegistry ?? throw new ArgumentNullException(nameof(commandRegistry));
+        _stateHandlerRegistry = stateHandlerRegistry ?? throw new ArgumentNullException(nameof(stateHandlerRegistry));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -52,14 +55,12 @@ public class UpdateRouter : IUpdateRouter
         }
     }
 
-    private async Task HandleMessageAsync(ITelegramBotClient botClient, Message message,
+    private async Task HandleMessageAsync( ITelegramBotClient botClient, Message message,
         IUserStateRepository stateRepository, CancellationToken cancellationToken)
     {
         var telegramId = message.From?.Id;
         if (telegramId is null)
-        {
             return;
-        }
 
         var messageText = message.Text?.Trim();
 
@@ -87,9 +88,21 @@ public class UpdateRouter : IUpdateRouter
 
         // Retrieves user state from database for multi-step conversations.
         var userState = await stateRepository.GetByTelegramIdAsync(telegramId.Value, cancellationToken);
+        var currentState = userState?.CurrentState;
 
         _logger.LogInformation("Processing message for user {TelegramId} with current state: {State}",
-            telegramId, userState?.CurrentState ?? "None");
+            telegramId, currentState ?? "None");
+
+        // Routes to state handler if active state exists.
+        if (!string.IsNullOrEmpty(currentState))
+        {
+            var stateHandler = _stateHandlerRegistry.GetHandler(currentState);
+            if (stateHandler is not null)
+            {
+                await stateHandler.HandleAsync(botClient, message, cancellationToken);
+                return;
+            }
+        }
 
         // Fallback for regular text messages when no command or active state matches.
         await botClient.SendMessage(
